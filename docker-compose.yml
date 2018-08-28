@@ -1,0 +1,190 @@
+version: "2"
+
+services:
+
+  microservice_base_nginx:
+    build: ./microservices/base/nginx
+    volumes_from:
+      - source_code
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - microservice_base_fpm
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.11
+
+  microservice_base_fpm:
+    build: ./microservices/base/php-fpm
+    volumes_from:
+      - source_code
+    links:
+      - db
+      - memcached
+    expose:
+      - 9000
+    extra_hosts:
+      - "admin.kf5.co:172.16.238.11"
+      - "b.kf5.co:172.16.238.11"
+      - "pusher-new.kf5.com:172.16.238.16"
+      - "els-center.kf5.com:172.16.238.11"
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.12
+
+  db:
+    build: ./microservices/base/db
+#    restart: always
+    volumes:
+      - ./db-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+    expose:
+      - 3306
+    ports:
+      - 33061:3306
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.13
+
+  memcached:
+    build: ./microservices/base/memcached
+#    restart: always
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.14
+
+  adminer:
+      image: adminer
+#      restart: always
+      links:
+        - db
+      ports:
+        - 8901:8080
+      networks:
+        app_net:
+          ipv4_address: 172.16.238.15
+
+  rabbitmq:
+    build: ./microservices/base/messaging
+#    restart: always
+    hostname: test-rabbit
+    volumes:
+      - ./mq-data:/var/lib/rabbitmq/mnesia/rabbit@test-rabbit
+    expose:
+      - 5672
+    ports:
+      - 8902:15672
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.17
+
+  microservice_pusher:
+    build: ./microservices/pusher
+    links:
+      - db
+      - rabbitmq
+    expose:
+      - 3310
+    ports:
+      - 3210:3210
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.16
+
+  microservice_base_els:
+    build: ./microservices/base/els
+    volumes:
+      - ./els-data:/usr/share/elasticsearch/data
+      - ./microservices/base/els/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./microservices/base/els/config/logging.yml:/usr/share/elasticsearch/config/logging.yml
+    ports:
+      - 9200:9200
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.18
+
+#  microservice_base_elastichq:
+#    build: ./microservices/base/elastichq
+#    links:
+#      - microservice_base_els
+#    ports:
+#      - 8903:5000
+#    networks:
+#      app_net:
+#        ipv4_address: 172.16.238.19
+
+  elasticsearch-head:
+    image: mobz/elasticsearch-head:2
+    links:
+      - microservice_base_els
+    ports:
+      - 8905:9100
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.20
+
+  redis:
+    build: ./microservices/base/redis
+    expose:
+      - 6379
+    volumes:
+      - ./data/redis:/data
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.21
+
+#  elk:
+#    build: ./microservices/base/elk
+#    environment:
+#      - bootstrap.memory_lock=true
+#      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+#      - "TZ=Asia/Chongqing"
+#    ulimits:
+#      memlock:
+#        soft: -1
+#        hard: -1
+#    mem_limit: 1g
+#    ports:
+#      - 5601:5601
+#      - 8909:9200
+#    volumes:
+#      - ./data/elk:/var/lib/elasticsearch
+#    networks:
+#      app_net:
+#        ipv4_address: 172.16.238.22
+
+#  filebeat:
+#    build: ./microservices/base/filebeat
+#    links:
+#      - elk
+#    volumes_from:
+#      - source_code
+#    networks:
+#      app_net:
+#        ipv4_address: 172.16.238.23
+
+#  composer:
+#    build: ./microservices/base/composer
+#    volumes:
+#      - ./source/ticket-system:/app
+#    networks:
+#      app_net:
+#        ipv4_address: 172.16.238.24
+
+
+  source_code:
+    image: nginx:stable
+    volumes:
+      - ./source:/var/www/html
+    command: "true"
+
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.238.0/24
+          gateway: 172.16.238.1
