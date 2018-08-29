@@ -9,8 +9,8 @@ services:
     ports:
       - 80:80
       - 443:443
-    volumes:
-      - ./docker-service/nginx/config.d:/etc/nginx
+#    volumes:
+#      - ./docker-service/nginx/config.d:/etc/nginx
     depends_on:
       - php_fpm
     networks:

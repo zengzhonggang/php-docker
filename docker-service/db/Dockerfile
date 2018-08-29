@@ -18,5 +18,4 @@ RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
 #    ntpdate \
 #    libconfig-crontab-perl
 
-
 COPY ./config/mysqld.cnf /etc/mysql/mysql.conf.d/
