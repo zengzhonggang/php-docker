@@ -27,11 +27,14 @@ RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
 #//  39 => 'Zend OPcache',** opcache
 #//  40 => 'zip', **
 
+RUN mkdir -p /usr/local/etc/php/conf.d/
+
 RUN apt-get update && apt-get install -y \
 		libjpeg62-turbo-dev \
 		libmcrypt-dev \
 		libpng-dev \
-	&& docker-php-ext-install -j$(nproc) mcrypt gd bcmath mysqli pdo_mysql sockets opcache zip
+	&& docker-php-ext-install -j$(nproc) mcrypt gd bcmath mysqli pdo_mysql sockets opcache zip \
+	&& docker-php-ext-enable mysqli pdo_mysql
 
 RUN apt-get update && apt-get install -y \
 		libfreetype6-dev \
